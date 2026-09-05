@@ -226,6 +226,11 @@ def run_all(condition, features):
         except Exception as exc: failures.append({"model":m,"message":str(exc)})
     return results, failures
 
+@app.get("/")
+@app.get("/api")
+def root():
+    return {"ok": True, "service": "BioSync ML API", "docs": "/docs", "health": "/health", "models": "/models"}
+
 @app.get("/health")
 def health():
     return {"ok": True, "conditions": ["cardiovascular", "diabetes"], "models": {"cardiovascular": list(CARDIO_MODELS)+["HybridQuantum"], "diabetes": ["LogisticRegression","RandomForest","FinetunedHybridQML"]}}
