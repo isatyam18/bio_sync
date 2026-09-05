@@ -1,0 +1,23 @@
+{
+    "source_dataset": "diabetes_prediction_dataset.csv",
+    "train_samples": 98000,
+    "validation_samples": 1000,
+    "test_samples": 1000,
+    "features": [
+        "gender",
+        "age",
+        "hypertension",
+        "heart_disease",
+        "smoking_history",
+        "bmi",
+        "HbA1c_level",
+        "blood_glucose_level"
+    ],
+    "numeric_features": [
+        "age",
+        "bmi",
+        "HbA1c_level",
+        "blood_glucose_level"
+    ],
+    "seed": 42
+}

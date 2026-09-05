@@ -1,0 +1,225 @@
+{
+  "cardiovascular": {
+    "test_set": {
+      "description": "Supplied benchmark results for the cardio_70k dataset.",
+      "models": {
+        "RandomForest": {
+          "accuracy": 0.687359,
+          "sensitivity": 0.686618,
+          "specificity": 0.688085,
+          "precision": 0.683202,
+          "f1": 0.684905,
+          "roc_auc": 0.753163
+        },
+        "SVM": {
+          "accuracy": 0.68372,
+          "sensitivity": 0.701324,
+          "specificity": 0.666475,
+          "precision": 0.673207,
+          "f1": 0.686978,
+          "roc_auc": 0.750153
+        },
+        "XGBoost": {
+          "accuracy": 0.689615,
+          "sensitivity": 0.682353,
+          "specificity": 0.69673,
+          "precision": 0.687917,
+          "f1": 0.685124,
+          "roc_auc": 0.754738
+        },
+        "QSVM": {
+          "accuracy": 0.6925,
+          "sensitivity": 0.635443,
+          "specificity": 0.748148,
+          "precision": 0.711048,
+          "f1": 0.671123,
+          "roc_auc": 0.726904
+        },
+        "Hybrid": {
+          "accuracy": 0.68625,
+          "sensitivity": 0.620253,
+          "specificity": 0.750617,
+          "precision": 0.708092,
+          "f1": 0.661269,
+          "roc_auc": 0.757128
+        }
+      }
+    },
+    "heart_multisite_benchmark": {
+      "description": "Supplied benchmark results for the heart_multisite dataset. This artifact is retained as benchmark evidence; the bundled multisite hybrid object does not include a live quantum SVC object.",
+      "models": {
+        "RandomForest": {
+          "accuracy": 0.809783,
+          "sensitivity": 0.823529,
+          "specificity": 0.792683,
+          "precision": 0.831683,
+          "f1": 0.827586,
+          "roc_auc": 0.884266
+        },
+        "SVM": {
+          "accuracy": 0.798913,
+          "sensitivity": 0.843137,
+          "specificity": 0.743902,
+          "precision": 0.803738,
+          "f1": 0.822967,
+          "roc_auc": 0.912004
+        },
+        "XGBoost": {
+          "accuracy": 0.826087,
+          "sensitivity": 0.862745,
+          "specificity": 0.780488,
+          "precision": 0.830189,
+          "f1": 0.846154,
+          "roc_auc": 0.892037
+        },
+        "QSVM": {
+          "accuracy": 0.755435,
+          "sensitivity": 0.794118,
+          "specificity": 0.707317,
+          "precision": 0.771429,
+          "f1": 0.782609,
+          "roc_auc": 0.832855
+        },
+        "Hybrid": {
+          "accuracy": 0.782609,
+          "sensitivity": 0.823529,
+          "specificity": 0.731707,
+          "precision": 0.792453,
+          "f1": 0.807692,
+          "roc_auc": 0.890363
+        }
+      }
+    }
+  },
+  "diabetes": {
+    "evaluation_protocol": {
+      "dataset": "diabetes_prediction_dataset.csv",
+      "train_samples": 98000,
+      "validation_samples": 1000,
+      "test_samples": 1000,
+      "test_positive_count": 85,
+      "test_positive_rate": 0.085,
+      "class_imbalance_note": "The held-out test set contains 8.5% positive cases; accuracy is therefore reported alongside sensitivity, specificity, F1 and ROC-AUC."
+    },
+    "production_test_set": {
+      "description": "Supplied eight-feature production baselines. These are not the direct quantum comparison because the supplied hybrid QML uses four numeric features.",
+      "features": [
+        "gender",
+        "age",
+        "hypertension",
+        "heart_disease",
+        "smoking_history",
+        "bmi",
+        "HbA1c_level",
+        "blood_glucose_level"
+      ],
+      "models": {
+        "LogisticRegression": {
+          "accuracy": 0.884,
+          "balanced_accuracy": 0.8939247830279653,
+          "precision": 0.41621621621621624,
+          "sensitivity": 0.9058823529411765,
+          "specificity": 0.8819672131147541,
+          "f1": 0.5703703703703704,
+          "roc_auc": 0.9628158148505304,
+          "tn": 807,
+          "fp": 108,
+          "fn": 8,
+          "tp": 77
+        },
+        "RandomForest": {
+          "accuracy": 0.929,
+          "balanced_accuracy": 0.8918354226936676,
+          "precision": 0.5538461538461539,
+          "sensitivity": 0.8470588235294118,
+          "specificity": 0.9366120218579235,
+          "f1": 0.6697674418604651,
+          "roc_auc": 0.9720347155255544,
+          "tn": 857,
+          "fp": 58,
+          "fn": 13,
+          "tp": 72
+        }
+      }
+    },
+    "fair_same_feature_benchmark": {
+      "description": "Direct comparison on the same four numeric features and the same held-out 1000-row test split. Logistic Regression and Random Forest were independently retrained from the supplied 98,000-row transformed training split. Hybrid QML metrics are the supplied test evidence for the same split.",
+      "features": [
+        "age",
+        "bmi",
+        "HbA1c_level",
+        "blood_glucose_level"
+      ],
+      "train_samples": 98000,
+      "test_samples": 1000,
+      "test_positive_count": 85,
+      "test_positive_rate": 0.085,
+      "models": {
+        "LogisticRegression": {
+          "accuracy": 0.875,
+          "balanced_accuracy": 0.8783349405335905,
+          "precision": 0.39473684210526316,
+          "sensitivity": 0.8823529411764706,
+          "specificity": 0.8743169398907104,
+          "f1": 0.5454545454545454,
+          "roc_auc": 0.9603600128576021,
+          "tn": 800,
+          "fp": 115,
+          "fn": 10,
+          "tp": 75
+        },
+        "RandomForest": {
+          "accuracy": 0.885,
+          "balanced_accuracy": 0.8944712311153971,
+          "precision": 0.41847826086956524,
+          "sensitivity": 0.9058823529411765,
+          "specificity": 0.8830601092896175,
+          "f1": 0.5724907063197026,
+          "roc_auc": 0.9753648344583735,
+          "tn": 808,
+          "fp": 107,
+          "fn": 8,
+          "tp": 77
+        },
+        "FinetunedHybridQML": {
+          "accuracy": 0.828,
+          "balanced_accuracy": 0.8046287367405979,
+          "precision": 0.3013698630136986,
+          "sensitivity": 0.7764705882352941,
+          "specificity": 0.8327868852459016,
+          "f1": 0.4342105263157895,
+          "roc_auc": 0.881722918675667,
+          "tn": 762,
+          "fp": 153,
+          "fn": 19,
+          "tp": 66
+        }
+      },
+      "baseline_retraining": {
+        "LogisticRegression": {
+          "class_weight": "balanced",
+          "max_iter": 2000,
+          "random_state": 42
+        },
+        "RandomForest": {
+          "n_estimators": 200,
+          "max_depth": 8,
+          "class_weight": "balanced",
+          "random_state": 42
+        }
+      },
+      "split_sha256": {
+        "train_transformed.csv": "69439e6b38e506db233c8944e8d248ebcd9304dc5571a7d2e531a9717a016be1",
+        "test_transformed.csv": "1c4e19f3f6072235d307abd4a566c769d661eeea865e7387c5bdd4af93f3d8f3"
+      },
+      "qml_evidence_source": "ml-api/benchmarks/diabetes/test_results.csv",
+      "qml_runtime_note": "The supplied QML training source is not bundled. The test metrics are preserved as supplied evidence; live circuit reconstruction is explicitly marked as needing validation against the original training code or a replacement artifact."
+    },
+    "generalization": {
+      "train_roc_auc": 0.887,
+      "validation_roc_auc": 0.8648023143683703,
+      "test_roc_auc": 0.881722918675667,
+      "train_validation_gap": 0.022
+    }
+  }
+}

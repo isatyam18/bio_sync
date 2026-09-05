@@ -1,0 +1,64 @@
+{
+  "provenance": {
+    "description": "Same-feature benchmark for direct classical-vs-hybrid-QML comparison.",
+    "features": [
+      "age",
+      "bmi",
+      "HbA1c_level",
+      "blood_glucose_level"
+    ],
+    "train_samples": 98000,
+    "test_samples": 1000,
+    "test_positive_count": 85,
+    "test_positive_rate": 0.085,
+    "split_files": {
+      "train_transformed.csv": "69439e6b38e506db233c8944e8d248ebcd9304dc5571a7d2e531a9717a016be1",
+      "test_transformed.csv": "1c4e19f3f6072235d307abd4a566c769d661eeea865e7387c5bdd4af93f3d8f3"
+    },
+    "training": {
+      "LogisticRegression": {
+        "class_weight": "balanced",
+        "max_iter": 2000,
+        "random_state": 42
+      },
+      "RandomForest": {
+        "n_estimators": 200,
+        "max_depth": 8,
+        "class_weight": "balanced",
+        "random_state": 42
+      }
+    },
+    "software": {
+      "python": "3.13.5",
+      "scikit_learn": "1.8.0"
+    }
+  },
+  "models": {
+    "LogisticRegression": {
+      "accuracy": 0.875,
+      "balanced_accuracy": 0.8783349405335905,
+      "precision": 0.39473684210526316,
+      "sensitivity": 0.8823529411764706,
+      "specificity": 0.8743169398907104,
+      "f1": 0.5454545454545454,
+      "roc_auc": 0.9603600128576021,
+      "tn": 800,
+      "fp": 115,
+      "fn": 10,
+      "tp": 75
+    },
+    "RandomForest": {
+      "accuracy": 0.885,
+      "balanced_accuracy": 0.8944712311153971,
+      "precision": 0.41847826086956524,
+      "sensitivity": 0.9058823529411765,
+      "specificity": 0.8830601092896175,
+      "f1": 0.5724907063197026,
+      "roc_auc": 0.9753648344583735,
+      "tn": 808,
+      "fp": 107,
+      "fn": 8,
+      "tp": 77
+    }
+  }
+}

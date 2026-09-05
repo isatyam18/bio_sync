@@ -1,0 +1,4 @@
+Model,Training time (s),Inference time / 1000 test (s),Quantum component
+Logistic Regression,0.3350600599999325,,None
+Random Forest,5.698536643999887,,None
+Finetuned Hybrid QML,31.744568645000072,0.03603799699999399,4-qubit simulator

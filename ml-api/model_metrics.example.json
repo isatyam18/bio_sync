@@ -1,0 +1,24 @@
+{
+  "cardiovascular": {},
+  "diabetes": {
+    "evaluation_protocol": {
+      "dataset": "diabetes_prediction_dataset.csv",
+      "train_samples": 98000,
+      "validation_samples": 1000,
+      "test_samples": 1000,
+      "test_positive_count": 85,
+      "test_positive_rate": 0.085
+    },
+    "production_test_set": {
+      "features": ["gender", "age", "hypertension", "heart_disease", "smoking_history", "bmi", "HbA1c_level", "blood_glucose_level"],
+      "models": {}
+    },
+    "fair_same_feature_benchmark": {
+      "features": ["age", "bmi", "HbA1c_level", "blood_glucose_level"],
+      "train_samples": 98000,
+      "test_samples": 1000,
+      "models": {}
+    },
+    "generalization": {}
+  }
+}
