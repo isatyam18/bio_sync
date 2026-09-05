@@ -204,14 +204,14 @@ function groupAssessments(predictions) {
 function safeName(value) { return String(value || 'patient').replace(/[^a-zA-Z0-9_-]/g, '_'); }
 
 function drawTable(doc, headers, rows, widths) {
-  const x0 = doc.x;
+  const x0 = doc.page.margins.left || 48;
   let y = doc.y;
-  const rowHeight = 24;
+  const rowHeight = 22;
   doc.font('Helvetica-Bold').fontSize(8);
   headers.forEach((header, index) => {
     let x = x0 + widths.slice(0, index).reduce((a, b) => a + b, 0);
     doc.rect(x, y, widths[index], rowHeight).fillAndStroke('#f2f5f3', '#d9e0dd');
-    doc.fillColor('#26332f').text(String(header), x + 5, y + 7, { width: widths[index] - 10, lineBreak: false });
+    doc.fillColor('#26332f').text(String(header), x + 5, y + 6, { width: widths[index] - 10, lineBreak: false });
   });
   y += rowHeight;
   doc.font('Helvetica').fontSize(7.8);
@@ -219,21 +219,23 @@ function drawTable(doc, headers, rows, widths) {
     let x = x0;
     row.forEach((value, index) => {
       doc.fillColor('#26332f').rect(x, y, widths[index], rowHeight).stroke('#e3e8e5');
-      doc.text(String(value ?? '—'), x + 5, y + 7, { width: widths[index] - 10, lineBreak: false, ellipsis: true });
+      doc.text(String(value ?? '—'), x + 5, y + 6, { width: widths[index] - 10, lineBreak: false, ellipsis: true });
       x += widths[index];
     });
     y += rowHeight;
   }
+  doc.x = x0;
   doc.y = y + 10;
 }
 
 function drawLineChart(doc, points, title) {
   if (!points || !points.length) return;
-  const startX = doc.x;
+  const startX = doc.page.margins.left || 48;
   const startY = doc.y + 6;
-  const chartWidth = 490;
+  const chartWidth = doc.page.width - (doc.page.margins.left || 48) - (doc.page.margins.right || 48);
   const chartHeight = 110;
 
+  doc.x = startX;
   doc.fillColor('#26332f').font('Helvetica-Bold').fontSize(9.5).text(title, startX, startY);
 
   const boxY = startY + 14;
@@ -254,6 +256,7 @@ function drawLineChart(doc, points, title) {
     doc.circle(x, y, 4).fillAndStroke('#ffffff', '#0f3d38');
     doc.fillColor('#26332f').font('Helvetica-Bold').fontSize(7.5).text(`${(pt.value * 100).toFixed(1)}%`, x - 20, y - 10, { width: 40, align: 'center' });
     doc.fillColor('#7a8b84').font('Helvetica').fontSize(7).text('Run 1', x - 20, boxY + chartHeight - 11, { width: 40, align: 'center' });
+    doc.x = startX;
     doc.y = boxY + chartHeight + 12;
     return;
   }
@@ -281,6 +284,7 @@ function drawLineChart(doc, points, title) {
     doc.fillColor('#7a8b84').font('Helvetica').fontSize(7).text(`Run ${i + 1}`, pt.x - 18, boxY + chartHeight - 11, { width: 36, align: 'center' });
   });
 
+  doc.x = startX;
   doc.y = boxY + chartHeight + 12;
 }
 
@@ -298,10 +302,12 @@ async function buildReport({ patient, condition, assessments, latest, rows, risk
     doc.on('error', reject);
 
     const heading = (title, size = 12) => {
+      doc.x = doc.page.margins.left || 48;
       doc.fillColor('#26332f').font('Helvetica-Bold').fontSize(size).text(title);
       doc.moveDown(0.35);
     };
     const note = (text) => {
+      doc.x = doc.page.margins.left || 48;
       doc.fillColor('#6b7772').font('Helvetica').fontSize(8.2).text(text, { width: 495 });
       doc.moveDown(0.35);
     };
