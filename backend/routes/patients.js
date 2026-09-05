@@ -227,6 +227,63 @@ function drawTable(doc, headers, rows, widths) {
   doc.y = y + 10;
 }
 
+function drawLineChart(doc, points, title) {
+  if (!points || !points.length) return;
+  const startX = doc.x;
+  const startY = doc.y + 6;
+  const chartWidth = 490;
+  const chartHeight = 110;
+
+  doc.fillColor('#26332f').font('Helvetica-Bold').fontSize(9.5).text(title, startX, startY);
+
+  const boxY = startY + 14;
+  doc.rect(startX, boxY, chartWidth, chartHeight).fillAndStroke('#f8faf9', '#d9e0dd');
+
+  doc.strokeColor('#d0dad4').lineWidth(0.5);
+  doc.moveTo(startX, boxY + chartHeight / 2).lineTo(startX + chartWidth, boxY + chartHeight / 2).dash(3, { space: 3 }).stroke().undash();
+
+  doc.fillColor('#7a8b84').font('Helvetica').fontSize(7);
+  doc.text('100%', startX + 4, boxY + 4);
+  doc.text('50%', startX + 4, boxY + chartHeight / 2 - 4);
+  doc.text('0%', startX + 4, boxY + chartHeight - 11);
+
+  if (points.length === 1) {
+    const pt = points[0];
+    const x = startX + chartWidth / 2;
+    const y = boxY + 10 + (1 - Math.max(0, Math.min(1, pt.value))) * (chartHeight - 24);
+    doc.circle(x, y, 4).fillAndStroke('#ffffff', '#0f3d38');
+    doc.fillColor('#26332f').font('Helvetica-Bold').fontSize(7.5).text(`${(pt.value * 100).toFixed(1)}%`, x - 20, y - 10, { width: 40, align: 'center' });
+    doc.fillColor('#7a8b84').font('Helvetica').fontSize(7).text('Run 1', x - 20, boxY + chartHeight - 11, { width: 40, align: 'center' });
+    doc.y = boxY + chartHeight + 12;
+    return;
+  }
+
+  const pad = 40;
+  const plotW = chartWidth - pad * 2;
+  const plotH = chartHeight - 24;
+
+  const coords = points.map((pt, i) => {
+    const x = startX + pad + (i * plotW) / Math.max(1, points.length - 1);
+    const y = boxY + 10 + (1 - Math.max(0, Math.min(1, pt.value))) * plotH;
+    return { x, y, value: pt.value, label: pt.label };
+  });
+
+  doc.strokeColor('#0f3d38').lineWidth(2);
+  doc.moveTo(coords[0].x, coords[0].y);
+  for (let i = 1; i < coords.length; i++) {
+    doc.lineTo(coords[i].x, coords[i].y);
+  }
+  doc.stroke();
+
+  coords.forEach((pt, i) => {
+    doc.circle(pt.x, pt.y, 3.5).fillAndStroke('#ffffff', '#0f3d38');
+    doc.fillColor('#26332f').font('Helvetica-Bold').fontSize(7.5).text(`${(pt.value * 100).toFixed(1)}%`, pt.x - 18, pt.y - 10, { width: 36, align: 'center' });
+    doc.fillColor('#7a8b84').font('Helvetica').fontSize(7).text(`Run ${i + 1}`, pt.x - 18, boxY + chartHeight - 11, { width: 36, align: 'center' });
+  });
+
+  doc.y = boxY + chartHeight + 12;
+}
+
 async function buildReport({ patient, condition, assessments, latest, rows, riskIndicators, modelInfo }) {
   return new Promise((resolve, reject) => {
     const label = conditionLabel(condition);
@@ -379,19 +436,16 @@ router.get('/:id', async (req, res, next) => {
 
     const predictions = await Prediction.find({ patient: patient._id, owner: req.session.user.id }).sort({ createdAt: -1 }).lean();
     const assessments = groupAssessments(predictions);
+    const riskFactors = indicators(patient.condition, patient);
 
     if (req.session.user.role !== 'doctor') {
-      const safe = assessments.map((assessment) => ({
-        assessmentId: assessment.assessmentId,
-        condition: assessment.condition,
-        createdAt: assessment.createdAt,
-        riskLevel: assessment.summary.riskLevel,
-      }));
       return res.json({
-        patient: { _id: patient._id, name: patient.name, patientId: patient.patientId, condition: patient.condition },
+        patient,
+        predictions,
+        assessments,
         viewerRole: 'patient',
-        latest: safe[0] || null,
-        assessments: safe,
+        latest: assessments[0] || null,
+        riskIndicators: riskFactors,
       });
     }
 
@@ -400,14 +454,44 @@ router.get('/:id', async (req, res, next) => {
       predictions,
       assessments,
       viewerRole: 'doctor',
-      riskIndicators: indicators(patient.condition, patient),
+      riskIndicators: riskFactors,
     });
+  } catch (error) { next(error); }
+});
+
+router.put('/:id', async (req, res, next) => {
+  try {
+    const patient = await Patient.findOne({ _id: req.params.id, owner: req.session.user.id });
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+
+    const condition = patient.condition || 'cardiovascular';
+    const body = { ...req.body };
+
+    const error = validatePatient(condition, body);
+    if (error) return res.status(400).json({ message: error });
+
+    if (body.name && req.session.user.role === 'doctor') patient.name = body.name.trim();
+    if (body.age !== undefined) patient.age = Number(body.age);
+
+    if (condition === 'cardiovascular') {
+      ['gender', 'height', 'weight', 'ap_hi', 'ap_lo', 'cholesterol', 'gluc', 'smoke', 'alco', 'active', 'bmi'].forEach((k) => {
+        if (body[k] !== undefined) patient[k] = Number(body[k]);
+      });
+    } else {
+      ['bmi', 'HbA1c_level', 'blood_glucose_level', 'hypertension', 'heart_disease'].forEach((k) => {
+        if (body[k] !== undefined) patient[k] = Number(body[k]);
+      });
+      if (body.diabetesGender) patient.diabetesGender = body.diabetesGender;
+      if (body.smoking_history) patient.smoking_history = body.smoking_history;
+    }
+
+    await patient.save();
+    res.json({ ok: true, patient });
   } catch (error) { next(error); }
 });
 
 router.get('/:id/report', async (req, res, next) => {
   try {
-    if (req.session.user.role !== 'doctor') return res.status(403).json({ message: 'Doctor access required' });
     const patient = await Patient.findOne({ _id: req.params.id, owner: req.session.user.id });
     if (!patient) return res.status(404).json({ message: 'Patient not found' });
 
