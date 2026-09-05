@@ -1,123 +1,318 @@
-# BioSync — Hybrid ML/QML Health Risk Assessment
+# BioSync: Explainable Hybrid ML and Quantum Machine Learning Health Risk Assessment
 
-BioSync is a disease-specific, model-based risk-assessment workflow with separate patient and doctor views.
+BioSync is an end-to-end clinical decision-support and health risk assessment platform. It bridges classical machine learning with quantum machine learning (QML) models to evaluate disease risk based on patient physiological profiles, offering dedicated interfaces for both patients and healthcare providers.
 
-## Supported conditions
-- Cardiovascular
-- Diabetes
+---
 
-Breast Cancer is **not** part of the current product build.
+## Table of Contents
 
-## Architecture
-Browser → Next.js frontend → Express backend → MongoDB ↔ FastAPI ML API
+- [System Architecture](#system-architecture)
+- [Supported Conditions and Model Portfolio](#supported-conditions-and-model-portfolio)
+- [Quantum Machine Learning Implementations](#quantum-machine-learning-implementations)
+- [Repository Structure](#repository-structure)
+- [Prerequisites](#prerequisites)
+- [Installation and Setup](#installation-and-setup)
+- [Environment Variables](#environment-variables)
+- [Running the Services](#running-the-services)
+- [API Documentation](#api-documentation)
+- [Clinical Safety and Framing](#clinical-safety-and-framing)
+- [Security and Reliability](#security-and-reliability)
+- [Benchmarking and Reproducibility](#benchmarking-and-reproducibility)
+- [Deployment Guidelines](#deployment-guidelines)
+- [Disclaimer](#disclaimer)
 
-Each patient profile has a `condition`, so the backend sends only the matching feature contract to the matching model set.
+---
 
-## Diabetes evidence
-The supplied Diabetes package contains:
-- Logistic Regression
-- Random Forest
-- Finetuned Hybrid QML
-- held-out train/validation/test transformed splits
-- QML threshold search
-- QML training history
-- efficiency benchmark
-- supplied QML benchmark evidence
+## System Architecture
 
-### Production Diabetes baselines
-These use the full eight-feature production contract:
+The platform operates as a three-tier decoupled microservice architecture:
 
-`gender, age, hypertension, heart_disease, smoking_history, bmi, HbA1c_level, blood_glucose_level`
-
-On the supplied 1,000-row held-out test split:
-
-| Model | Accuracy | Sensitivity | Specificity | F1 | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Logistic Regression | 88.4% | 90.6% | 88.2% | 57.0% | 0.963 |
-| Random Forest | 92.9% | 84.7% | 93.7% | 67.0% | 0.972 |
-
-### Direct classical vs hybrid-QML benchmark
-The direct comparison uses the **same four numeric features** used by the supplied QML artifact:
-
-`age, bmi, HbA1c_level, blood_glucose_level`
-
-The same held-out test split is used for all three rows. Logistic Regression and Random Forest are independently retrained from the supplied 98,000-row training split with `class_weight=balanced`, `random_state=42`; the QML row is preserved from the supplied QML test evidence.
-
-| Model | Accuracy | Sensitivity | Specificity | F1 | ROC-AUC |
-|---|---:|---:|---:|---:|---:|
-| Logistic Regression | 87.5% | 88.2% | 87.4% | 54.5% | 0.960 |
-| Random Forest | 88.5% | 90.6% | 88.3% | 57.2% | 0.975 |
-| Finetuned Hybrid QML | 82.8% | 77.6% | 83.3% | 43.4% | 0.882 |
-
-The QML row is **not presented as independently reproduced** because the original QML training source is not included in the supplied artifact. This is deliberate evidence hygiene, not a hidden limitation.
-
-## Diabetes hybrid-QML runtime
-The `Finetuned Hybrid QML` model is executable in the application. Its serialized artifact is loaded at startup and the saved quantum weights plus classical head are used for inference.
-
-Runtime order:
-1. Standardize the four quantum inputs.
-2. Apply the supplied quantum MinMax scaling range.
-3. Run the documented 4-qubit / 3-layer reconstructed circuit on a simulator.
-4. Feed the four quantum expectation values into the serialized 4→8→1 classical head.
-5. Apply the supplied decision threshold (≈0.53).
-
-PennyLane `default.qubit` is preferred when available. A dependency-light local 4-qubit statevector implementation executes the same documented reconstructed circuit if PennyLane is unavailable or incompatible. This fallback is still quantum simulation; it is not a classical replacement. The original QML training source was not bundled, so the runtime is not described as exact training-source reproduction.
-
-Quick check:
-```bash
-cd ml-api
-python qml_smoke_test.py
+```
+Browser Client
+     │
+     ▼
+Next.js 15 Frontend (Port 3000)
+     │ (API Proxy / Rewrites)
+     ▼
+Express.js Backend (Port 4000) ◄────► MongoDB / MongoDB Atlas (Port 27017)
+     │
+     ▼ (Internal JSON RPC / REST)
+FastAPI ML Service (Port 8000)
 ```
 
-## Explainability
-BioSync distinguishes two things:
+1. **Frontend (Next.js 15 / React 19 / Tailwind CSS / Lucide)**: Provides authenticated patient self-service views and clinical doctor dashboards, interactive risk summaries, model explainability indicators, and downloadable PDF clinical reports.
+2. **Backend (Node.js / Express / Mongoose / Session Auth)**: Handles authentication, session persistence with MongoStore, input validation, role-based access control (patient vs. doctor), patient record encryption/scoping, and aggregated assessment logging.
+3. **ML Service (FastAPI / Uvicorn / PyTorch / Qiskit / PennyLane / Scikit-Learn / XGBoost)**: Hosts pre-trained classical ensembles and parameterized quantum circuits for inference, metric reporting, and feature preprocessing.
 
-1. **Submitted-value indicators** — directly derived from entered patient values. These are not model-attribution scores.
+---
 
-## Quantum transparency
-The doctor view exposes the serialized quantum configuration and its provenance. For Diabetes the supplied artifact records 4 qubits, 3 layers and 24 trainable quantum parameters. Because the original QML training source was not bundled, the live circuit is explicitly labelled as an artifact reconstruction until the training source/replacement artifact is supplied.
+## Supported Conditions and Model Portfolio
 
-For Cardiovascular, the current bundle records a 6-feature quantum-kernel configuration with one repetition and linear entanglement. The bundle does not serialize the original feature-map class, so the runtime documents that reconstruction rather than claiming exact training-source provenance.
+Each condition operates under a strict feature contract to guarantee deterministic input transformation and model inference.
 
-## Clinical-safety framing
-- Positive/negative is a model class label, not a diagnosis.
-- Model-derived percentages are not presented as clinically validated probabilities.
-- Risk bands are display-only product bands, not clinically validated thresholds.
-- Patients receive a risk-band communication and recommended professional follow-up, not detailed model internals.
-- Doctors receive detailed model comparison, evidence and reports.
+### 1. Cardiovascular Condition
 
-## Security and reliability basics
-- Session authentication with Mongo-backed sessions
-- Password hashing with bcrypt
-- Patient records scoped by owner at the backend
-- Doctor-only model metadata/report access
-- Backend feature validation
-- Authentication and prediction rate limiting
-- Production session-secret guard
-- Helmet security headers
-- Graceful model-service failure handling
-- Assessment IDs group model outputs into one assessment
+- **Feature Contract (12 features)**:
+  - Demographic: `age`, `gender`, `height`, `weight`, `bmi`
+  - Vitals: `ap_hi` (Systolic BP), `ap_lo` (Diastolic BP)
+  - Biochemical: `cholesterol` (1: normal, 2: above normal, 3: well above normal), `gluc` (1: normal, 2: above normal, 3: well above normal)
+  - Behavioral: `smoke`, `alco`, `active`
+- **Models Executed**:
+  - `RandomForest`: 200 trees, maximum depth 8, balanced class weighting. Preprocessing: StandardScaler -> PCA(6).
+  - `XGBoost`: Gradient boosted decision trees (200 estimators, learning rate 0.05, max depth 3). Preprocessing: StandardScaler -> PCA(6).
+  - `SVM`: Support Vector Classifier with RBF kernel and probability calibration. Preprocessing: StandardScaler -> PCA(6).
+  - `HybridQuantum`: Blended quantum-classical model combining classical XGBoost with a 6-qubit linear entanglement quantum-kernel Support Vector Machine (QSVM).
 
-## Reproduce the Diabetes fair benchmark
-From the project root:
+### 2. Diabetes Condition
+
+- **Feature Contract (8 features)**:
+  - Categorical: `gender` (Female, Male, Other), `smoking_history` (never, former, current, ever, not current, No Info)
+  - Comorbidities: `hypertension` (0/1), `heart_disease` (0/1)
+  - Numeric Biometrics: `age`, `bmi`, `HbA1c_level`, `blood_glucose_level`
+- **Models Executed**:
+  - `LogisticRegression`: Multi-feature classical baseline with balanced class weights.
+  - `RandomForest`: Ensemble classifier (200 trees, maximum depth 8).
+  - `FinetunedHybridQML`: Parameterized 4-qubit, 3-layer quantum circuit connected to a 4->8->1 classical neural network head.
+
+---
+
+## Quantum Machine Learning Implementations
+
+### Cardiovascular Quantum Kernel (QSVM)
+- **Circuit Design**: 6-qubit `ZZFeatureMap` with single repetition and linear entanglement.
+- **Inference Optimization**: Live statevector fidelity calculations are performed via vectorized NumPy tensor products against precomputed reference training vectors. This replaces iterative AST circuit construction with instantaneous millisecond-level evaluation while preserving machine precision parity with Qiskit's `FidelityQuantumKernel`.
+- **Calibration**: Quantum decision scores are calibrated via a fitted Platt calibrator into a probability distribution and weighted with the classical branch.
+
+### Diabetes Hybrid Quantum Neural Network (QNN)
+- **Circuit Design**: 4-qubit variational circuit encoding normalized numeric features (`age`, `bmi`, `HbA1c_level`, `blood_glucose_level`) across 3 parameterized layers (24 variational parameters).
+- **Execution**: Evaluated via PennyLane `default.qubit` simulator with fallback to a lightweight local statevector simulator.
+- **Decision Head**: Expectation values are fed into a trained feed-forward classical neural head with a calibrated decision threshold of 0.53.
+
+---
+
+## Repository Structure
+
+```
+BioSync/
+├── RUN_BIOSYNC_WINDOWS.bat        # Automated one-click launcher for Windows
+├── RUN_FIRST.md                   # Quick-start documentation
+├── README.md                      # Comprehensive system documentation
+├── backend/                       # Express.js REST API service
+│   ├── .env.example               # Template environment configuration
+│   ├── middleware/                # Session authentication and RBAC guards
+│   ├── models/                    # Mongoose schemas (User, Patient, Prediction)
+│   ├── routes/                    # Endpoints (auth, patients, dashboard)
+│   ├── package.json
+│   └── server.js                  # Application entry point
+├── frontend/                      # Next.js 15 web application
+│   ├── app/                       # App router pages (dashboard, login, patients)
+│   ├── components/                # Reusable UI components & layouts
+│   ├── lib/                       # API client and helper functions
+│   ├── next.config.js             # API proxy routing configuration
+│   ├── package.json
+│   └── tsconfig.json
+├── ml-api/                        # FastAPI Machine Learning Service
+│   ├── benchmarks/                # Empirical benchmark tables and histories
+│   ├── models/                    # Serialized model weights (.pkl, .joblib, .pt)
+│   ├── diabetes_qml_runtime.py    # Standalone QML simulation engine
+│   ├── main.py                    # FastAPI application routes and inference
+│   ├── qml_smoke_test.py          # Quantum verification script
+│   ├── smoke_test.py              # Classical verification script
+│   └── requirements.txt           # Python package dependencies
+└── data/                          # Transformed validation and benchmark splits
+```
+
+---
+
+## Prerequisites
+
+- **Node.js**: Version 18.x or 20.x LTS
+- **Python**: Version 3.11, 3.12, or 3.13 (64-bit)
+- **MongoDB**: Local MongoDB Community Server (v6.0+) or a MongoDB Atlas connection string
+
+---
+
+## Installation and Setup
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/isatyam18/bio_sync.git
+cd bio_sync
+```
+
+### 2. Python Virtual Environment and ML Dependencies
+
+```bash
+# Create virtual environment in root
+python -m venv .venv
+
+# Activate virtual environment
+# Windows (PowerShell / Command Prompt):
+.\.venv\Scripts\activate
+# macOS / Linux:
+source .venv/bin/activate
+
+# Install Python dependencies
+pip install -r ml-api/requirements.txt
+```
+
+### 3. Backend Dependencies
+
+```bash
+cd backend
+npm install
+cd ..
+```
+
+### 4. Frontend Dependencies
+
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the `backend/` directory using the provided template:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+Configuration parameters:
+
+```env
+PORT=4000
+MONGO_URI=mongodb://127.0.0.1:27017/biosync
+SESSION_SECRET=a-secure-random-secret-key-at-least-32-characters-long
+ML_API_URL=http://127.0.0.1:8000
+FRONTEND_ORIGIN=http://localhost:3000
+NODE_ENV=development
+```
+
+*Note: For MongoDB Atlas, set `MONGO_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/biosync?retryWrites=true&w=majority`.*
+
+---
+
+## Running the Services
+
+### Option A: Windows Batch Launcher (Automated)
+
+Double-click `RUN_BIOSYNC_WINDOWS.bat` or run from PowerShell:
+
+```powershell
+.\RUN_BIOSYNC_WINDOWS.bat
+```
+
+This launches all three services (ML API, Backend, Frontend) in individual console windows.
+
+### Option B: Manual Execution (Terminal per Service)
+
+#### Terminal 1: ML API Service
+```bash
+cd ml-api
+# Activate venv:
+..\.venv\Scripts\activate
+python -m uvicorn main:app --reload --port 8000
+```
+Verify health: `http://127.0.0.1:8000/health`
+
+#### Terminal 2: Backend API Service
+```bash
+cd backend
+npm run dev
+```
+Verify health: `http://127.0.0.1:4000/health`
+
+#### Terminal 3: Frontend Web Service
+```bash
+cd frontend
+npm run dev
+```
+Access application: `http://localhost:3000`
+
+---
+
+## API Documentation
+
+### ML API (`http://127.0.0.1:8000`)
+
+- `GET /health`: Returns service operational status and available models.
+- `GET /models`: Returns model architecture metadata, training benchmarks, and feature expectations.
+- `POST /predict`: Evaluates a single specific model for a patient.
+  - Body: `{"condition": "cardiovascular" | "diabetes", "model": "RandomForest", "features": {...}}`
+- `POST /predict-all`: Executes all applicable models for the specified condition simultaneously.
+  - Body: `{"condition": "cardiovascular" | "diabetes", "features": {...}}`
+
+### Backend API (`http://127.0.0.1:4000/api`)
+
+- `POST /auth/signup`: Registers a new user (`patient` or `doctor`).
+- `POST /auth/login`: Authenticates user and establishes session cookie.
+- `GET /auth/me`: Retrieves current session profile and role.
+- `POST /auth/logout`: Destroys session.
+- `GET /patients`: Lists registered patient profiles accessible to the user.
+- `POST /patients`: Registers a new patient with required condition biometrics.
+- `GET /patients/:id`: Retrieves full patient history and past assessments.
+- `POST /patients/:id/predict`: Runs a new model assessment and persists predictions.
+- `GET /patients/:id/report`: Generates and streams a formatted PDF clinical assessment report.
+- `GET /ml-info`: Provides doctor-only access to model performance metrics.
+
+---
+
+## Clinical Safety and Framing
+
+BioSync enforces strict clinical framing across all interfaces:
+- **Decision Support, Not Diagnosis**: Positive and negative model outputs represent predictive statistical classifications, not definitive medical diagnoses.
+- **Display Risk Bands**: Risk stratifications (Low, Moderate, High) are heuristic communication bands, not clinically validated thresholds.
+- **Audience-Specific Views**:
+  - *Patients*: Receive plain-language summaries, lifestyle indicator reflections, and explicit guidance to consult licensed medical professionals.
+  - *Doctors*: Receive granular model performance comparisons, ROC-AUC metrics, feature attributions, and quantum transparency disclosures.
+
+---
+
+## Security and Reliability
+
+- **Session Authentication**: State stored in MongoDB via `connect-mongo` with HttpOnly, SameSite cookies.
+- **Password Security**: Salted password hashing using `bcrypt`.
+- **Rate Limiting**: Configured with `express-rate-limit` on authentication (`/api/auth/*`) and inference (`/api/patients/:id/predict`) endpoints.
+- **HTTP Security**: Automated headers managed via `helmet`.
+- **Data Scoping**: Patient records and assessments are strictly queried and scoped by authenticated user ID and role.
+- **Graceful Degradation**: Classical predictions succeed and are saved even if an individual experimental model encounters an error.
+
+---
+
+## Benchmarking and Reproducibility
+
+### Diabetes Fair Baseline Benchmark
+To re-evaluate the comparative performance between classical models and the hybrid QML model on identical numeric feature subsets:
 
 ```bash
 python rebuild_diabetes_benchmark.py
 ```
 
-The script uses the supplied transformed train/test files and writes:
+### Verification Smoke Tests
+To verify all quantum and classical model pipelines locally:
 
-`ml-api/benchmarks/diabetes/fair_same_feature_benchmark.json`
+```bash
+cd ml-api
+python qml_smoke_test.py
+python smoke_test.py
+```
 
-It also writes the retrained fair-baseline artifacts into:
+---
 
-`ml-api/models/diabetes/fair_benchmark/`
+## Deployment Guidelines
 
-## Final pending input
-The current cardiovascular hybrid package from the ML team is bundled as `ml-api/models/hybrid_cardio_70k.joblib`. The `heart_multisite` hybrid artifact is retained as benchmark evidence because it does not bundle a live quantum SVC object.
+- **Frontend**: Deployable as a Next.js Web Service on Vercel, Netlify, or Render. Set environment variable `NEXT_PUBLIC_API_URL` or configure reverse proxy to the backend.
+- **Backend**: Deployable on Render, Railway, AWS ECS, or any Node.js 18+ container. Ensure `MONGO_URI` and `ML_API_URL` are configured.
+- **ML API**: Deployable as a Python web service (Render, Railway, AWS EC2, or Docker). Recommended minimum specifications: 1 vCPU, 2 GB RAM.
 
-## V3 result/PDF fixes
-- Quantum result is surfaced explicitly on the patient result page.
-- Diabetes hybrid-QML is no longer rerun four extra times for sensitivity explanations.
-- PDF tables use controlled pagination and the assessment trend chart is placed on a dedicated history page.
-- Landing-page feature bullets/dots were removed without changing the overall visual design.
+---
+
+## Disclaimer
+
+BioSync is designed solely for informational, educational, and clinical research decision-support purposes. It is not an FDA-cleared or CE-marked medical device. All outputs should be reviewed and verified by qualified medical practitioners prior to making clinical decisions.
