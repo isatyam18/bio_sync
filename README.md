@@ -1,6 +1,6 @@
-# BioSync: Explainable Hybrid ML and Quantum Machine Learning Health Risk Assessment
+# BioSync: Hybrid Quantum ML Platform for Early Disease Detection
 
-BioSync is an end-to-end clinical decision-support and health risk assessment platform. It bridges classical machine learning with quantum machine learning (QML) models to evaluate disease risk based on patient physiological profiles, offering dedicated interfaces for both patients and healthcare providers.
+BioSync is an end-to-end clinical decision-support and health risk assessment platform. It bridges classical machine learning with quantum machine learning (QML) models to evaluate disease risk based on patient physiological profiles, offering dedicated interfaces for both patients and healthcare providers, longitudinal trajectory mapping across consecutive assessments, and automated clinical PDF reports.
 
 ---
 
@@ -9,6 +9,7 @@ BioSync is an end-to-end clinical decision-support and health risk assessment pl
 - [System Architecture](#system-architecture)
 - [Supported Conditions and Model Portfolio](#supported-conditions-and-model-portfolio)
 - [Quantum Machine Learning Implementations](#quantum-machine-learning-implementations)
+- [Longitudinal Trajectory Mapping](#longitudinal-trajectory-mapping)
 - [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
 - [Installation and Setup](#installation-and-setup)
@@ -40,8 +41,8 @@ Express.js Backend (Port 4000) ◄────► MongoDB / MongoDB Atlas (Port 
 FastAPI ML Service (Port 8000)
 ```
 
-1. **Frontend (Next.js 15 / React 19 / Tailwind CSS / Lucide)**: Provides authenticated patient self-service views and clinical doctor dashboards, interactive risk summaries, model explainability indicators, and downloadable PDF clinical reports.
-2. **Backend (Node.js / Express / Mongoose / Session Auth)**: Handles authentication, session persistence with MongoStore, input validation, role-based access control (patient vs. doctor), patient record encryption/scoping, and aggregated assessment logging.
+1. **Frontend (Next.js 15 / React 19 / Tailwind CSS / Lucide)**: Authenticated patient self-service views and doctor dashboards, interactive risk summaries, biometric snapshot cards, editable parameter forms, longitudinal trajectory mapping graphs, and downloadable PDF clinical analysis reports.
+2. **Backend (Node.js / Express / Mongoose / Session Auth)**: Handles session management with MongoStore, bcrypt password hashing, patient record management (creation, update, retrieval), role-based access control, prediction history aggregation, and PDFKit report generation.
 3. **ML Service (FastAPI / Uvicorn / PyTorch / Qiskit / PennyLane / Scikit-Learn / XGBoost)**: Hosts pre-trained classical ensembles and parameterized quantum circuits for inference, metric reporting, and feature preprocessing.
 
 ---
@@ -80,13 +81,23 @@ Each condition operates under a strict feature contract to guarantee determinist
 
 ### Cardiovascular Quantum Kernel (QSVM)
 - **Circuit Design**: 6-qubit `ZZFeatureMap` with single repetition and linear entanglement.
-- **Inference Optimization**: Live statevector fidelity calculations are performed via vectorized NumPy tensor products against precomputed reference training vectors. This replaces iterative AST circuit construction with instantaneous millisecond-level evaluation while preserving machine precision parity with Qiskit's `FidelityQuantumKernel`.
+- **Inference Optimization**: Live statevector fidelity calculations are performed via vectorized NumPy tensor products against precomputed reference training vectors. This replaces iterative AST circuit construction with instantaneous millisecond-level evaluation (sub-20ms) while preserving 16-decimal-place mathematical parity with Qiskit's `FidelityQuantumKernel`.
 - **Calibration**: Quantum decision scores are calibrated via a fitted Platt calibrator into a probability distribution and weighted with the classical branch.
 
 ### Diabetes Hybrid Quantum Neural Network (QNN)
 - **Circuit Design**: 4-qubit variational circuit encoding normalized numeric features (`age`, `bmi`, `HbA1c_level`, `blood_glucose_level`) across 3 parameterized layers (24 variational parameters).
 - **Execution**: Evaluated via PennyLane `default.qubit` simulator with fallback to a lightweight local statevector simulator.
 - **Decision Head**: Expectation values are fed into a trained feed-forward classical neural head with a calibrated decision threshold of 0.53.
+
+---
+
+## Longitudinal Trajectory Mapping
+
+BioSync supports dynamic parameter updating and chronological risk trajectory mapping:
+- **Continuous Patient Updates**: Patients and healthcare providers can update recorded biometrics (such as blood pressure, glucose, BMI, or lifestyle factors) directly from the profile dashboard or right before running an assessment via `PUT /api/patients/:id`.
+- **Sequential Assessment Runs**: Each assessment execution produces an immutable record grouped under a unique `assessmentId` and timestamp (`Run 1`, `Run 2`, `Run 3`, ...).
+- **Trajectory Curve Visualization**: Consecutive runs are plotted on an interactive probability trajectory graph displaying chronological risk evolution and net delta calculations (e.g. *Run 1 (35.0%) -> Run 2 (28.0%): -7.0% risk improvement*).
+- **Clinical PDF Integration**: The complete trajectory trend is embedded directly into downloadable PDF clinical reports using native vector line-chart rendering.
 
 ---
 
@@ -106,8 +117,8 @@ BioSync/
 │   └── server.js                  # Application entry point
 ├── frontend/                      # Next.js 15 web application
 │   ├── app/                       # App router pages (dashboard, login, patients)
-│   ├── components/                # Reusable UI components & layouts
-│   ├── lib/                       # API client and helper functions
+│   ├── components/                # Reusable UI components & workspace shell
+│   ├── lib/                       # API client and utility helpers
 │   ├── next.config.js             # API proxy routing configuration
 │   ├── package.json
 │   └── tsconfig.json
@@ -219,21 +230,24 @@ cd ml-api
 ..\.venv\Scripts\activate
 python -m uvicorn main:app --reload --port 8000
 ```
-Verify health: `http://127.0.0.1:8000/health`
+- Status: `http://127.0.0.1:8000/api`
+- Health: `http://127.0.0.1:8000/health`
+- Interactive API Docs: `http://127.0.0.1:8000/docs`
 
 #### Terminal 2: Backend API Service
 ```bash
 cd backend
 npm run dev
 ```
-Verify health: `http://127.0.0.1:4000/health`
+- Status: `http://127.0.0.1:4000/api`
+- Health: `http://127.0.0.1:4000/health`
 
 #### Terminal 3: Frontend Web Service
 ```bash
 cd frontend
 npm run dev
 ```
-Access application: `http://localhost:3000`
+- Web Application: `http://localhost:3000`
 
 ---
 
@@ -241,8 +255,9 @@ Access application: `http://localhost:3000`
 
 ### ML API (`http://127.0.0.1:8000`)
 
-- `GET /health`: Returns service operational status and available models.
-- `GET /models`: Returns model architecture metadata, training benchmarks, and feature expectations.
+- `GET /` and `GET /api`: Returns service status and documentation links.
+- `GET /health`: Returns service operational status and supported models.
+- `GET /models`: Returns model architecture metadata, training benchmarks, and feature requirements.
 - `POST /predict`: Evaluates a single specific model for a patient.
   - Body: `{"condition": "cardiovascular" | "diabetes", "model": "RandomForest", "features": {...}}`
 - `POST /predict-all`: Executes all applicable models for the specified condition simultaneously.
@@ -250,16 +265,19 @@ Access application: `http://localhost:3000`
 
 ### Backend API (`http://127.0.0.1:4000/api`)
 
-- `POST /auth/signup`: Registers a new user (`patient` or `doctor`).
-- `POST /auth/login`: Authenticates user and establishes session cookie.
-- `GET /auth/me`: Retrieves current session profile and role.
-- `POST /auth/logout`: Destroys session.
-- `GET /patients`: Lists registered patient profiles accessible to the user.
-- `POST /patients`: Registers a new patient with required condition biometrics.
-- `GET /patients/:id`: Retrieves full patient history and past assessments.
-- `POST /patients/:id/predict`: Runs a new model assessment and persists predictions.
-- `GET /patients/:id/report`: Generates and streams a formatted PDF clinical assessment report.
-- `GET /ml-info`: Provides doctor-only access to model performance metrics.
+- `GET /` and `GET /api`: Returns API status and endpoint directory.
+- `GET /health`: Operational health check.
+- `POST /api/auth/signup`: Registers a new user (`patient` or `doctor`).
+- `POST /api/auth/login`: Authenticates user and sets session cookie.
+- `GET /api/auth/me`: Retrieves current session profile and role.
+- `POST /api/auth/logout`: Destroys session.
+- `GET /api/patients`: Lists patient profiles accessible to the authenticated user.
+- `POST /api/patients`: Registers a new patient with required biometrics.
+- `GET /api/patients/:id`: Retrieves full patient profile, active biometrics, risk indicators, and assessment history.
+- `PUT /api/patients/:id`: Updates existing patient biometrics for longitudinal trajectory tracking.
+- `POST /api/patients/:id/predict`: Runs a new model assessment and appends the run to the patient history.
+- `GET /api/patients/:id/report`: Generates and streams a formatted multi-page PDF clinical report with embedded trajectory trend graph.
+- `GET /api/ml-info`: Provides doctor-only access to model performance metrics.
 
 ---
 
@@ -269,7 +287,7 @@ BioSync enforces strict clinical framing across all interfaces:
 - **Decision Support, Not Diagnosis**: Positive and negative model outputs represent predictive statistical classifications, not definitive medical diagnoses.
 - **Display Risk Bands**: Risk stratifications (Low, Moderate, High) are heuristic communication bands, not clinically validated thresholds.
 - **Audience-Specific Views**:
-  - *Patients*: Receive plain-language summaries, lifestyle indicator reflections, and explicit guidance to consult licensed medical professionals.
+  - *Patients*: Receive plain-language summaries, lifestyle indicator reflections, trajectory overviews, and explicit guidance to consult licensed medical professionals.
   - *Doctors*: Receive granular model performance comparisons, ROC-AUC metrics, feature attributions, and quantum transparency disclosures.
 
 ---
